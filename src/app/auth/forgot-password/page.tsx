@@ -19,12 +19,17 @@ export default function ForgotPasswordPage() {
     setError('')
     setSuccess(false)
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/update-password`,
       })
-      if (error) throw error
+      if (error) {
+        console.error('Supabase Reset Error:', error.message)
+        throw error
+      }
+      console.log('Supabase Reset Success:', data)
       setSuccess(true)
     } catch (err: any) {
+      console.error('Password reset request failed:', err)
       setError(err.message || 'Error sending password reset email. Please try again.')
     } finally {
       setLoading(false)

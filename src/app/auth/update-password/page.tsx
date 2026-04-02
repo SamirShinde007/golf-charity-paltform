@@ -17,16 +17,27 @@ export default function UpdatePasswordPage() {
   const [password, setPassword] = useState('')
 
   useEffect(() => {
-    // Optional: check if the user is actually in a secure session suitable for updating their password.
-    // If they click the email link, they are given a minimal session (or immediately establish one).
+    // Listen for the recovery session from the URL hash
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        // Recovery session established!
+        setError('')
+      } else if (!session && event === 'SIGNED_OUT') {
+        setError('Your session has expired or the link is invalid. Please request a new password reset link.')
+      }
+    })
+
+    // Immediate check
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        setError('No active session found. Please try requesting a password reset link again.')
+      if (!session && !window.location.hash.includes('access_token')) {
+        setError('No active session found. Please ensure you clicked the link in your email.')
       }
     }
     checkSession()
-  }, [])
+
+    return () => subscription.unsubscribe()
+  }, [supabase.auth])
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
