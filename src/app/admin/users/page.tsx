@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Users, Search, Shield, User, CheckCircle, XCircle, Edit2, Loader2, X, Check } from 'lucide-react'
+import { Users, Search, Shield, User, CheckCircle, XCircle, Edit2, Loader2, X, Check, Trash2, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { format } from 'date-fns'
 
@@ -12,7 +12,9 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [editingUser, setEditingUser] = useState<any>(null)
+  const [deletingUser, setDeletingUser] = useState<any>(null)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => { fetchUsers() }, [])
 
@@ -37,6 +39,26 @@ export default function AdminUsersPage() {
     await fetchUsers()
     setEditingUser(null)
     setSaving(false)
+  }
+
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return
+    setDeleting(true)
+    try {
+      const response = await fetch('/api/admin/users/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: deletingUser.id })
+      })
+      const data = await response.json()
+      if (data.error) throw new Error(data.error)
+      await fetchUsers()
+      setDeletingUser(null)
+    } catch (error: any) {
+      alert(error.message || 'Failed to delete user')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const filtered = users.filter(u =>
@@ -100,6 +122,34 @@ export default function AdminUsersPage() {
               </button>
               <button onClick={() => setEditingUser(null)}
                 className="px-5 glass hover:bg-white/10 rounded-xl text-sm transition-all">Cancel</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+            className="bg-[hsl(20_14%_7%)] border border-border rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10 text-destructive mb-4 mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <h3 className="text-xl font-bold text-center mb-2">Delete User?</h3>
+            <p className="text-center text-muted-foreground mb-6">
+              Are you sure you want to delete <span className="text-foreground font-semibold">{deletingUser.full_name || deletingUser.email}</span>?
+              This action is permanent and cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeletingUser(null)} disabled={deleting}
+                className="flex-1 px-5 py-2.5 glass hover:bg-white/10 rounded-xl text-sm font-medium transition-all">
+                Cancel
+              </button>
+              <button onClick={handleDeleteUser} disabled={deleting}
+                className="flex-1 flex items-center justify-center gap-2 bg-destructive hover:bg-destructive/90 text-white py-2.5 rounded-xl text-sm font-semibold transition-all">
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Delete User
+              </button>
             </div>
           </motion.div>
         </div>
@@ -169,10 +219,18 @@ export default function AdminUsersPage() {
                       {format(new Date(user.created_at), 'dd MMM yyyy')}
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <button onClick={() => setEditingUser(user)}
-                        className="p-1.5 rounded-lg hover:bg-white/5 text-muted-foreground hover:text-gold-400 transition-all">
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => setEditingUser(user)}
+                          className="p-1.5 rounded-lg hover:bg-white/5 text-muted-foreground hover:text-gold-400 transition-all"
+                          title="Edit User">
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => setDeletingUser(user)}
+                          className="p-1.5 rounded-lg hover:bg-white/5 text-muted-foreground hover:text-destructive transition-all"
+                          title="Delete User">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
