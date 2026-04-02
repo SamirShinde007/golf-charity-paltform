@@ -19,13 +19,18 @@ export default function SignupPage() {
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-        // @ts-ignore
-        router.push(profile?.role === 'admin' ? '/admin' : '/dashboard')
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+        
+        const role = profile ? (profile as any).role : 'subscriber'
+        router.push(role === 'admin' ? '/admin' : '/dashboard')
       }
     }
     checkUser()
-  }, [])
+  }, [supabase.auth, router])
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
